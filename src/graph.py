@@ -61,6 +61,9 @@ class Node(ABC):
                 "This method is not implemented in current class. "
                 "Any class that inherit the Node class must implement the iter_in_nodes method")
 
+    def deg(self):
+        return len(self._edges)
+
 
 class UndirectedNode(Node):
 
@@ -110,12 +113,7 @@ class DirectedNode(Node):
     def connect(self, target, weight=None):
         # Connect current node to another node, and return the edge
         edge = super(DirectedNode, self).connect(target, weight=weight)
-        target._append_edge(edge)
         return edge
-
-    def _append_edge(self, edge: Edge):
-        assert (edge.source is self) or (edge.target is self)
-        self._edges.append(edge)
 
     def iter_out_edges(self):
         for edge in self._edges:
@@ -137,6 +135,12 @@ class DirectedNode(Node):
         for edge in self.iter_in_edges():
             yield edge.source
 
+    def deg_out(self):
+        return len([x for x in self.iter_out_edges()])
+
+    def deg_in(self):
+        return len([x for x in self.iter_in_edges()])
+
 
 class Graph(ABC):
 
@@ -146,17 +150,17 @@ class Graph(ABC):
         if type(self) is Graph:
             raise Exception(
                 "Graph class is abstract, and cannot be used to create instances")
-        self.__node_library = dict()  # node_name to Node dictionary
-        self.__node_list = []
-        self.__edge_list = []
+        self._node_dict = dict()  # node_name to Node dictionary
+        self._nodes = []
+        self._edges = []
 
     def add_node(self, node: Node):
         if type(self) is Graph:
             raise NotImplementedError(
                 "This method is not implemented in the current class. Any class that inherit the Graph class must "
                 "implement the add_node method")
-        self.__node_list.append(node)
-        self.__node_library[node.name()] = node
+        self._nodes.append(node)
+        self._node_dict[node.name()] = node
         return node
 
     def connect(self, source, target, weight=None):
@@ -168,7 +172,7 @@ class Graph(ABC):
         if type(target) is str:
             target = self.get_node(target)
         edge = source.connect(target)
-        self.__edge_list.append(edge)
+        self._edges.append(edge)
 
     def traverse(self, func, func_args: tuple = (), *args):
         '''
@@ -183,11 +187,13 @@ class Graph(ABC):
                 "'func' parameter must be a callable object (function)")
         traverse_results = OrderedDict()  # Node name to result mapping
         visited_node = set()
-        for node in self.__node_list:
+        for node in self._nodes:
             if node not in visited_node:
                 traverse_stack = deque([node])
                 while len(traverse_stack) != 0:
                     current_node = traverse_stack.pop()
+                    if current_node in visited_node:
+                        continue
                     traverse_results[current_node.name()] = func(
                         current_node, *func_args)
                     temp_stack = deque()
@@ -196,13 +202,13 @@ class Graph(ABC):
                     while len(temp_stack) > 0:
                         next_node = temp_stack.pop()
                         if next_node not in visited_node:
-                            traverse_stack.append(temp_stack.pop())
+                            traverse_stack.append(next_node)
                     visited_node.add(current_node)
         return traverse_results
 
     def get_node(self, node_name: str):
         try:
-            return self.__node_library[node_name]
+            return self._node_dict[node_name]
         except KeyError:
             raise KeyError("The node name cannot be found in the graph")
 
@@ -212,11 +218,38 @@ class DirectedGraph(Graph):
         super(DirectedGraph, self).__init__()
 
     def check_DAG(self):
-        raise NotImplementedError()  # TODO
+        try:
+            self.topo_order()
+            return True
+        except:
+            return False
 
-    def topo_sort(self):
+    def topo_order(self):
         # Re-order the node list to follow TOPO order
-        raise NotImplementedError()  # TODO
+        visited_node = set()
+        visited_order = []
+        for node in self._nodes:
+            if node not in visited_node and node.deg_in() == 0:  # Only start traversing on node with in-degree = 0
+                traverse_stack = deque([node])
+                while len(traverse_stack) != 0:
+                    current_node = traverse_stack.pop()
+                    if current_node in visited_node:
+                        continue
+                    visited_order.append(current_node)
+                    temp_stack = deque()
+                    for next_node in current_node.iter_out_nodes():
+                        temp_stack.append(next_node)
+                    while len(temp_stack) > 0:
+                        next_node = temp_stack.pop()
+                        if next_node not in visited_node:
+                            traverse_stack.append(next_node)
+                    visited_node.add(current_node)
+        try:
+            assert len(visited_order) == len(self._nodes)
+        except:
+            raise Exception(
+                "Cannot get the topo order, the graph contains cycle(s)")
+        return visited_order
 
     def add_node(self, node: DirectedNode):
         return super(DirectedGraph, self).add_node(node)
@@ -245,10 +278,15 @@ class UndirectedGraph(Graph):
 
 if __name__ == "__main__":
     a = DirectedGraph()
-    node1 = DirectedNode("Node1")
-    node2 = DirectedNode("Node2")
-    a.add_node(node1)
-    a.add_node(node2)
-    a.connect(node2, node1)
+    a.add_node(DirectedNode("A"))
+    a.add_node(DirectedNode("B"))
+    a.add_node(DirectedNode("C"))
+    a.add_node(DirectedNode("D"))
+    a.add_node(DirectedNode("E"))
 
-    print(a.traverse(lambda x: x.name()))
+    a.connect("A", "B")
+    a.connect("A", "C")
+    a.connect("B", "C")
+    a.connect("D", "E")
+    a.connect("E", "A")
+    print([x.name() for x in a.topo_order()])
