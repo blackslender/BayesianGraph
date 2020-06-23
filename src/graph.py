@@ -1,5 +1,14 @@
 from abc import ABC
 from typing import Union, TypeVar
+from collections import OrderedDict, deque
+
+
+class Edge:
+    def __init__(self, source, target, weight=None):
+        self.source, self.target, self.weight = source, target, weight
+
+    def reverse(self):
+        return Edge(self.target, self.source, weight=self.weight)
 
 
 class Node(ABC):
@@ -8,90 +17,125 @@ class Node(ABC):
         if type(self) is Node:
             raise Exception(
                 "Node class is abstract, and cannot be used to create instances")
-        self.__none_name = node_name
+        self.__node_name = node_name
+        self._edges = []
 
     def connect(self, target, weight=None):
         if type(self) is Node:
             raise NotImplementedError(
-                "This method is not implemented in current class. Any class that inherit the Node class must implement the connect method")
-        return Edge(self, target, weight=weight)
+                "This method is not implemented in current class. "
+                "Any class that inherit the Node class must implement the connect method")
+        edge = Edge(self, target, weight=weight)
+        self._append_edge(edge)
+        target._append_edge(edge)
+        return edge
+
+    def _append_edge(self, edge: Edge):
+        assert (edge.source is self) or (edge.target is self)
+        self._edges.append(edge)
 
     def name(self):
         return self.__node_name
 
+    def iter_out_edges(self):
+        if type(self) is Node:
+            raise NotImplementedError(
+                "This method is not implemented in current class. "
+                "Any class that inherit the Node class must implement the iter_out_edges method")
 
-class Edge():
-    def __init__(self, source: Node, target: Node, weight=None):
-        # raise NotImplementedError()  # TODO
-        self.node_source, self.target, self.weight = source, target, weight
+    def iter_in_edges(self):
+        if type(self) is Node:
+            raise NotImplementedError(
+                "This method is not implemented in current class. "
+                "Any class that inherit the Node class must implement the iter_in_edges method")
 
-    def reverse(self):
-        return Edge(self.target, self.source, weight=self.weight)
+    def iter_out_nodes(self):
+        if type(self) is Node:
+            raise NotImplementedError(
+                "This method is not implemented in current class. "
+                "Any class that inherit the Node class must implement the iter_out_nodes method")
+
+    def iter_in_nodes(self):
+        if type(self) is Node:
+            raise NotImplementedError(
+                "This method is not implemented in current class. "
+                "Any class that inherit the Node class must implement the iter_in_nodes method")
 
 
 class UndirectedNode(Node):
 
     def __init__(self, nodename: str):
-        super(UndirectedGraph, self).__init__(nodename)
-        self.__edges = []
+        super(UndirectedNode, self).__init__(nodename)
 
     def connect(self, target: Node, weight=None):
-        edge = super(UndirectedNode, self).connect(target)
-        self.__edges.append(edge)
-        target.get_edges().append(edge.reverse())
+        """
+        Create a new edge to connect between current node and target node
+        """
+        edge = super(UndirectedNode, self).connect(target, weight=weight)
         return edge
 
-    def get_edges(self):
-        return self.__edges
-
-    def iter_neighbor_nodes(self):
-        for edge in self.__edges:
-            if self is edge.source:
+    def iter_out_nodes(self):
+        for edge in self._edges:
+            if edge.source is self:
                 yield edge.target
             else:
                 yield edge.source
 
-    def iter_edges(self):
-        for edge in self.__edges:
-            yield edge
+    def iter_in_nodes(self):
+        for edge in self._edges:
+            if edge.source is self:
+                yield edge.target
+            else:
+                yield edge.source
+
+    def iter_in_edges(self):
+        for edge in self._edges:
+            if edge.source is self:
+                yield edge.reverse()
+            else:
+                yield edge
+
+    def iter_out_edges(self):
+        for edge in self._edges:
+            if edge.source is self:
+                yield edge
+            else:
+                yield edge.reverse()
 
 
 class DirectedNode(Node):
     def __init__(self, nodename: str):
-        self.name = nodename
-        self.__edges_in = []
-        self.__edges_out = []
+        super(DirectedNode, self).__init__(nodename)
 
-    def get_edges_in(self):
-        return self.__edges_in
-
-    def get_edges_out(self):
-        return self.__edges_out
-
-    def connect(self, target: Node, weight=None):
+    def connect(self, target, weight=None):
         # Connect current node to another node, and return the edge
         edge = super(DirectedNode, self).connect(target, weight=weight)
-        self.__edges_out.append(edge)
-        target.get_edges_in().append(edge)
+        target._append_edge(edge)
         return edge
 
-    def iter_out_nodes(self):
-        ''' Iterate through the nodes which this node have an edge to'''
-        for edge in self.get_edges_out():
-            yield edge.target
+    def _append_edge(self, edge: Edge):
+        assert (edge.source is self) or (edge.target is self)
+        self._edges.append(edge)
 
     def iter_out_edges(self):
-        for edge in self.get_edges_out():
-            yield edge
+        for edge in self._edges:
+            if edge.source is self:
+                yield edge
 
-    def iter_back_nodes(self):
-        ''' Iterate through the nodes which have an edge connecting to this node '''
-        for edge in self.get_edges_in():
-            yield edge.source
+    def iter_out_nodes(self):
+        """ Iterate through the nodes which this node has an edge to"""
+        for edge in self.iter_out_edges():
+            yield edge.target
 
     def iter_in_edges(self):
-        for edge in self.get_edges_in():
-            yield edge
+        for edge in self._edges:
+            if edge.target is self:
+                yield edge
+
+    def iter_in_nodes(self):
+        """ Iterate through the nodes which have an edge connecting to this node """
+        for edge in self.iter_in_edges():
+            yield edge.source
 
 
 class Graph(ABC):
@@ -102,40 +146,64 @@ class Graph(ABC):
         if type(self) is Graph:
             raise Exception(
                 "Graph class is abstract, and cannot be used to create instances")
-        self.__node_library = dict()
-        self.__node_list
+        self.__node_library = dict()  # node_name to Node dictionary
+        self.__node_list = []
         self.__edge_list = []
 
-    def insert_node(self, node: Node):
-        # If node is string, create new node, otherwise add the node directly
+    def add_node(self, node: Node):
         if type(self) is Graph:
             raise NotImplementedError(
-                "This method is not implemented in the current class. Any class that inherit the Graph class must implement the add_node method")
+                "This method is not implemented in the current class. Any class that inherit the Graph class must "
+                "implement the add_node method")
         self.__node_list.append(node)
         self.__node_library[node.name()] = node
+        return node
 
-    def connect(self, node_from: Node, node_to: Node, weight=None):
+    def connect(self, source, target, weight=None):
         if type(self) is Graph:
             raise NotImplementedError(
                 "This method is not implemented in the current class. Any class that inherit the Graph class must implement the connect method")
-        edge = node_from.connect(node_to)
+        if type(source) is str:
+            source = self.get_node(source)
+        if type(target) is str:
+            target = self.get_node(target)
+        edge = source.connect(target)
         self.__edge_list.append(edge)
 
-    def traverse(self, func, function_args: tuple = (), mode='DFS' * args):
+    def traverse(self, func, func_args: tuple = (), *args):
         '''
-            This method provides a way to traverse through the graph
-            The function will be called as function(node, *function_args)'''
+            This method apply a function over nodes in the graph in DFS order\n
+            The function will be called as func(node, *func_args)'''
         if type(self) is Graph:
             raise NotImplementedError(
-                "This method is not implemented in the current class. Any class that inherit the Graph class must implement the traverse method")
+                "This method is not implemented in the current class. Any class that inherit the Graph class must "
+                "implement the traverse method")
         if not callable(func):
             raise Exception(
                 "'func' parameter must be a callable object (function)")
+        traverse_results = OrderedDict()  # Node name to result mapping
+        visited_node = set()
+        for node in self.__node_list:
+            if node not in visited_node:
+                traverse_stack = deque([node])
+                while len(traverse_stack) != 0:
+                    current_node = traverse_stack.pop()
+                    traverse_results[current_node.name()] = func(
+                        current_node, *func_args)
+                    temp_stack = deque()
+                    for next_node in current_node.iter_out_nodes():
+                        temp_stack.append(next_node)
+                    while len(temp_stack) > 0:
+                        next_node = temp_stack.pop()
+                        if next_node not in visited_node:
+                            traverse_stack.append(temp_stack.pop())
+                    visited_node.add(current_node)
+        return traverse_results
 
     def get_node(self, node_name: str):
         try:
             return self.__node_library[node_name]
-        except KeyError as e:
+        except KeyError:
             raise KeyError("The node name cannot be found in the graph")
 
 
@@ -146,49 +214,41 @@ class DirectedGraph(Graph):
     def check_DAG(self):
         raise NotImplementedError()  # TODO
 
-    def add_node(self, node: DirectedNode):
-        super(DirectedGraph, self).add_node(node)
-        # If node is string, create new node, otherwise add the node directly
+    def topo_sort(self):
+        # Re-order the node list to follow TOPO order
         raise NotImplementedError()  # TODO
 
-    def connect(self, node_from: DirectedNode, node_to: DirectedNode):
-        super(DirectedGraph, self).connect(node_from, node_to)
-        raise NotImplementedError()  # TODO
+    def add_node(self, node: DirectedNode):
+        return super(DirectedGraph, self).add_node(node)
+
+    def connect(self, source: DirectedNode, target: DirectedNode):
+        return super(DirectedGraph, self).connect(source, target)
 
     def traverse(self, func, function_args: tuple = (), traverse_mode='DFS', start_at=None, *args):
-        '''
-            Traverse through the graph\n
-            traverse_mode: can be "DFS" or "BFS"\n
-            start_at: name of the required starting node; if none, the nodes which is insert earlier will have higher priority
-        '''
-        super(DirectedGraph, self).traverse(func, function_args, *args)
-        if type(start_at) is str:
-            start_at = Graph.
-        # raise NotImplementedError()  # TODO
-
-    def __dfs_traverse(self, func, function_args: tuple = (), start_at=None * args):
-        traverse_result = dict()
+        return super(DirectedGraph, self).traverse(func, function_args, *args)
 
 
 class UndirectedGraph(Graph):
 
     def __init__(self):
         super(UndirectedGraph, self).__init__()
-        raise NotImplementedError()  # TODO
 
     def add_node(self, node: UndirectedNode):
         super(UndirectedGraph, self).add_node(node)
-        # If node is string, create new node, otherwise add the node directly
-        raise NotImplementedError()  # TODO
 
-    def connect(self, node_from: UndirectedNode, node_to: UndirectedNode):
-        super(UndirectedGraph, self).connect(node_from, node_to)
-        raise NotImplementedError()  # TODO
+    def connect(self, source: UndirectedNode, target: UndirectedNode):
+        return super(UndirectedGraph, self).connect(source, target)
 
     def traverse(self, func, function_args: tuple = (), *args):
-        super(UndirectedGraph, self).traverse(func, function_args, *args)
-        raise NotImplementedError()  # TODO
+        return super(UndirectedGraph, self).traverse(func, function_args, *args)
 
 
-# if __name__ == "__main__":
-#     pass
+if __name__ == "__main__":
+    a = DirectedGraph()
+    node1 = DirectedNode("Node1")
+    node2 = DirectedNode("Node2")
+    a.add_node(node1)
+    a.add_node(node2)
+    a.connect(node2, node1)
+
+    print(a.traverse(lambda x: x.name()))
