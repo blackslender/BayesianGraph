@@ -29,18 +29,6 @@ class DAG(DirectedGraph):
                 return v
         return None
 
-    def sort_topo(self):
-        #num_nodes = len(self.__nodelist)
-        #edge_matrix = np.zeros((num_nodes, num_nodes))
-        #vectice_index = {}
-        #for i,node in enumerate(self.__nodelist):
-        #    vectice_index[node.name] = i
-            
-
-
-    def check_DAG(self):
-        raise NotImplementedError()  # TODO
-
     def add_node(self, node: Union[str, DirectedNode]):
         temp = self.get_node_by_name(node)
         if temp is not None:

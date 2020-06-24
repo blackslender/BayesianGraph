@@ -1,0 +1,1 @@
+python3 main.py --model inputs/1/model.txt --query inputs/1/query.txt
