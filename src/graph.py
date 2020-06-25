@@ -218,11 +218,7 @@ class DirectedGraph(Graph):
         super(DirectedGraph, self).__init__()
 
     def check_DAG(self):
-        try:
-            self.topo_order()
-            return True
-        except:
-            return False
+        return self.topo_order() is not None
 
     def topo_order(self):
         # Re-order the node list to follow TOPO order
@@ -244,12 +240,13 @@ class DirectedGraph(Graph):
                         if next_node not in visited_node:
                             traverse_stack.append(next_node)
                     visited_node.add(current_node)
-        try:
-            assert len(visited_order) == len(self._nodes)
-        except:
-            raise Exception(
-                "Cannot get the topo order, the graph contains cycle(s)")
-        return visited_order
+        if len(visited_order) == len(self._nodes):
+            return visited_order
+        else:
+            return None
+
+    def sort_topo_order(self):
+        self._nodes = self.topo_order()
 
     def add_node(self, node: DirectedNode):
         return super(DirectedGraph, self).add_node(node)
@@ -283,7 +280,6 @@ if __name__ == "__main__":
     a.add_node(DirectedNode("C"))
     a.add_node(DirectedNode("D"))
     a.add_node(DirectedNode("E"))
-
     a.connect("A", "B")
     a.connect("A", "C")
     a.connect("B", "C")
