@@ -1,11 +1,15 @@
+# Review: This class seems not to be necessary. The DirectedGraph class has already implemented these features
+
+
 from graph import *
 from typing import Union, TypeVar
 import numpy as np
 
+
 class DAGNode(DirectedNode):
-    def __init__(self, nodename:str):
+    def __init__(self, nodename: str):
         super(DAGNode, self).__init__(nodename)
-        self.__next = []
+        # self.__next = []      # This is implement
 
     def connect(self, target: Union[str, DirectedNode]):
         # Connect current node to another node, and return the edge
@@ -16,6 +20,7 @@ class DAGNode(DirectedNode):
 
     def get_edge_str(self):
         return ["{} -> {}".format(self.name, x.name) for x in self.__next]
+
 
 class DAG(DirectedGraph):
     def __init__(self):
@@ -33,10 +38,8 @@ class DAG(DirectedGraph):
         #num_nodes = len(self.__nodelist)
         #edge_matrix = np.zeros((num_nodes, num_nodes))
         #vectice_index = {}
-        #for i,node in enumerate(self.__nodelist):
+        # for i,node in enumerate(self.__nodelist):
         #    vectice_index[node.name] = i
-            
-
 
     def check_DAG(self):
         raise NotImplementedError()  # TODO
