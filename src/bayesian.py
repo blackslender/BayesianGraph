@@ -27,6 +27,10 @@ class BayesNode(DirectedNode):
         return self._prob_table
 
 class BayesGraph(DirectedGraph):
+    def __init__(self):
+        super(BayesGraph, self).__init__()
+        self._node_names = [node.name() for node in self._nodes]
+
     def forward_generator(self, sample_number):
         node_number = len(self._nodes)
         self._sample_data = []
@@ -46,6 +50,16 @@ class BayesGraph(DirectedGraph):
                 discrete_idx[node.name()] = value_idx
             self._sample_data.append(discrete_sample)
         print(self._sample_data)
+
+    def build_filter(self, conditions):
+        conds = []
+        for k,v in conditions.items():
+            idx = self._node_names.index(k)
+            conds.append(lambda x: x[idx]==v)
+
+    def query(self, query):
+        variables = query[0]
+        conditions = query[1]
         
                 
 

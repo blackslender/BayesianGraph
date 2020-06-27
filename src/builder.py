@@ -18,11 +18,16 @@ class Parser():
     def parse_query_info(line):
         comps = line.split(';')
         variables = comps[0].split(',')
-        variables = [{item.split('=')[0]:item.split('=')[1]} for item in variables]
+        var_dict, condition_dict = {},{}
+        for item in variables:
+            k, v = item.split('=')
+            var_dict[k] = v
         conditions = comps[1].split(',') if len(comps[1])>0 else [] 
-        conditions = [{item.split('=')[0]:item.split('=')[1]} for item in conditions]
-        print(variables, conditions)
-        return variables, conditions
+        for item in conditions:
+            k, v = item.split('=')
+            condition_dict[k] = v
+        print(var_dict, condition_dict)
+        return var_dict, condition_dict
 
 class ModelBuilder():
     def __init__(self):
