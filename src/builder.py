@@ -1,8 +1,8 @@
 from bayesian import BayesGraph, BayesNode
 import numpy as np
+import os
 
-
-class Parser():
+class FileOperator():
     def __init__(self):
         pass
 
@@ -29,9 +29,17 @@ class Parser():
         for item in conditions:
             k, v = item.split('=')
             condition_dict[k] = v
-        print(var_dict, condition_dict)
+        print("Query: ", var_dict, condition_dict)
         return var_dict, condition_dict
 
+    @staticmethod
+    def write_to_file(file_path, content):
+        try:
+            os.mkdir(file_path[:-10]) # cut output.txt
+        except Exception as e:
+            print(e)
+        with open(file_path, "w+") as f:
+            f.write("\n".join([str(c) for c in content]))
 
 class ModelBuilder():
     def __init__(self):
@@ -45,19 +53,19 @@ class ModelBuilder():
             # if int(lines[0]) != len(lines) - 1:
             #     raise Exception("Mismatch at line number")
             for line in lines[1:]:
-                nodename, parent_nodes, node_values, prob_table = Parser.parse_node_info(
+                nodename, parent_nodes, node_values, prob_table = FileOperator.parse_node_info(
                     line)
                 new_node = BayesNode(nodename, parent_nodes,
                                      node_values, prob_table)
                 model.add_node(new_node)
                 for parent in parent_nodes:
                     model.connect(parent, nodename)
-        print([x.name() for x in model._nodes])
+        print("Node list: ", [x.name() for x in model._nodes])
         return model
 
 class QueryBuilder():
     def __init__(self):
-        self.queries = []
+        self.__queries = []
 
     def build_query_from_file(self, query_file):
         with open(query_file, 'r') as inp:
@@ -66,5 +74,8 @@ class QueryBuilder():
             # if int(lines[0]) != len(lines) - 1:
             #     raise Exception("Mismatch at line number")
             for line in lines[1:]:
-                variables, conditions = Parser.parse_query_info(line)
-                self.queries.append((variables, conditions))
+                variables, conditions = FileOperator.parse_query_info(line)
+                self.__queries.append((variables, conditions))
+
+    def get_queries(self):
+        return self.__queries
